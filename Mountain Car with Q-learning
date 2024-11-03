@@ -1,0 +1,44 @@
+import numpy as np
+import gym
+from collections import defaultdict
+
+# Initialize environment
+env = gym.make("MountainCar-v0")
+alpha = 0.1    # Learning rate
+gamma = 0.99   # Discount factor
+epsilon = 0.1  # Exploration rate
+n_episodes = 5000
+
+# Q-table initialization
+state_bins = [np.linspace(-1.2, 0.6, 20), np.linspace(-0.07, 0.07, 20)]
+Q_table = defaultdict(lambda: np.zeros(env.action_space.n))
+
+# Discretize states
+def get_discrete_state(state, bins):
+    return tuple(np.digitize(s, b) for s, b in zip(state, bins))
+
+# Q-learning algorithm
+for episode in range(n_episodes):
+    state = get_discrete_state(env.reset(), state_bins)
+    done = False
+    
+    while not done:
+        # Epsilon-greedy action selection
+        if np.random.rand() < epsilon:
+            action = env.action_space.sample()
+        else:
+            action = np.argmax(Q_table[state])
+        
+        next_state, reward, done, _ = env.step(action)
+        next_state = get_discrete_state(next_state, state_bins)
+        
+        # Q-value update
+        best_next_action = np.argmax(Q_table[next_state])
+        td_target = reward + gamma * Q_table[next_state][best_next_action]
+        Q_table[state][action] += alpha * (td_target - Q_table[state][action])
+        
+        state = next_state
+
+# Sample accuracy
+success_rate = sum(np.max(Q_table[state]) >= 0 for state in Q_table) / len(Q_table)
+print("Mountain Car Success Rate:", success_rate)
